@@ -1,0 +1,6 @@
+{
+  "name": "AI Prompt Workbench",
+  "description": "A high-end professional AI prompt engineering workspace featuring GEMINI vision analysis, Jimeng 4.0 image generation, and batch prompt refinement.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

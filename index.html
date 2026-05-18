@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 提示词工作台 - 专业版</title>
+<style>
+  :root {
+    --bg: #0a0a0f; --bg2: #111118; --bg3: #1a1a24; --bg4: #22222e;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+    --text: #f0f0f8; --text2: #8888aa; --text3: #44445a;
+    --accent: #6c63ff; --accent2: #8b82ff; --accent-glow: rgba(108,99,255,0.15);
+    --green: #22c55e; --green-bg: rgba(34,197,94,0.12);
+    --red: #f87171; --red-bg: rgba(248,113,113,0.1);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.1);
+    --teal: #2dd4bf; --teal-bg: rgba(45,212,191,0.1);
+    --radius: 12px; --radius-sm: 8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'PingFang SC','Microsoft YaHei',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+  /* NAV */
+  nav{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:56px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+  .nav-logo{font-size:15px;font-weight:600;letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+  .nav-logo-dot{width:22px;height:22px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px}
+  .nav-tabs{display:flex;gap:2px;background:var(--bg3);padding:3px;border-radius:var(--radius-sm);border:1px solid var(--border)}
+  .tab-btn{padding:6px 18px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-family:inherit;transition:all .18s;background:transparent;color:var(--text2)}
+  .tab-btn.active{background:var(--bg4);color:var(--text)}
+  .nav-right{display:flex;align-items:center;gap:10px}
+  .badge{font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid;white-space:nowrap}
+  .badge-ok{border-color:var(--green);color:var(--green);background:var(--green-bg)}
+
+  /* MAIN */
+  main{flex:1;padding:22px 28px;overflow-y:auto}
+  .page{display:none}.page.active{display:flex;flex-direction:column;gap:18px}
+
+  /* WORKSPACE GRID */
+  .ws-grid{display:grid;grid-template-columns:300px 1fr 200px;gap:18px;align-items:start}
+  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+  .panel-title{font-size:11px;letter-spacing:.08em;color:var(--text2);text-transform:uppercase;margin-bottom:12px}
+
+  /* UPLOAD */
+  .upload-zone{background:var(--bg3);border:1.5px dashed var(--border2);border-radius:var(--radius-sm);min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;transition:all .2s}
+  .upload-zone:hover{border-color:var(--accent);background:var(--accent-glow)}
+  .upload-zone img{width:100%;height:100%;object-fit:contain;display:none}
+
+  /* TEXTAREAS */
+  .prompt-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .prompt-ta{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--text);font-family:monospace;resize:none;height:240px;width:100%;outline:none}
+  .prompt-ta:focus{border-color:var(--accent)}
+
+  /* PREVIEW BOX */
+  .preview-box{background:var(--bg3);border:1.5px dashed var(--border);border-radius:var(--radius-sm);height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}
+  .preview-box img{width:100%;height:100%;object-fit:contain}
+
+  /* BUTTONS */
+  .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:13px;transition:all .18s;width:100%}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-teal{background:var(--teal-bg);color:var(--teal);border:1px solid rgba(45,212,191,.25)}
+  .btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+  
+  /* INPUTS */
+  .input-field,.select-field{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;color:var(--text);width:100%;outline:none}
+
+  /* MODAL */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(5px)}
+  .overlay.hidden{display:none}
+  .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:24px;width:500px;max-width:90vw}
+
+  /* STATUS */
+  .status-bar{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text2)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--text3)}
+  .dot.spin{background:var(--accent);animation:pulse 1s infinite}@keyframes pulse{50%{opacity:.3}}
+  .dot.ok{background:var(--green)}
+
+  /* GALLERY */
+  .g-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+  .g-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all .2s;cursor:pointer}
+  .g-card:hover{transform:translateY(-3px);border-color:var(--border2)}
+  .g-card img{width:100%;aspect-ratio:3/4;object-fit:cover}
+</style>
+</head>
+<body>
+
+<!-- API 配置弹窗 -->
+<div class="overlay hidden" id="cfgModal">
+  <div class="modal">
+    <h2 style="margin-bottom:8px">⚙️ API 密钥配置</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">这些密钥仅存储在您的浏览器本地 `localStorage` 中，直接在前端调用接口时注入。</p>
+    
+    <div style="background:var(--bg3); padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid var(--border)">
+      <p style="font-size:11px; color:var(--accent2); margin-bottom:4px">快速获取指南：</p>
+      <ul style="font-size:10px; color:var(--text2); padding-left:15px">
+        <li><b>火山 AK/SK</b>：登录 <a href="https://console.volcengine.com/iam/keypair/" target="_blank" style="color:var(--accent)">火山引擎控制台 -> 密钥管理</a> 获取。</li>
+        <li><b>Gemini Key</b>：登录 <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent)">Google AI Studio</a> 获取 API Key。</li>
+      </ul>
+    </div>
+    
+    <div style="display:flex;flex-direction:column;gap:15px">
+      <div>
+        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:5px">火山引擎 AK</label>
+        <input class="input-field" id="cfg-volc-ak" type="password" placeholder="AKLT...">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:5px">火山引擎 SK</label>
+        <input class="input-field" id="cfg-volc-sk" type="password" placeholder="Secret Key...">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:5px">Gemini API Key (留空使用服务器默认)</label>
+        <input class="input-field" id="cfg-gemini-key" type="password" placeholder="AIza...">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:25px">
+      <button class="btn btn-primary" onclick="saveConfig()" style="flex:1">保存配置</button>
+      <button class="btn btn-ghost" onclick="closeModal('cfgModal')">取消</button>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <div class="nav-logo"><div class="nav-logo-dot">✦</div>AI 提示词工作台</div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" id="tab0" onclick="switchTab('workspace')">生图工作台</button>
+    <button class="tab-btn" id="tab1" onclick="switchTab('batch')">⚡ 批量提示词</button>
+    <button class="tab-btn" id="tab2" onclick="switchTab('gallery')">案例画廊</button>
+  </div>
+  <div class="nav-right">
+    <span class="badge" id="backend-badge">未连接</span>
+    <button class="btn btn-ghost" style="width:auto;padding:6px 15px" onclick="openModal('cfgModal')">⚙️ 配置</button>
+  </div>
+</nav>
+
+<main>
+  <!-- 工作台页面 -->
+  <div class="page active" id="page-workspace">
+    <div class="ws-grid">
+      <!-- 左：上传与反推模型 -->
+      <div class="panel" style="display:flex;flex-direction:column;gap:12px">
+        <p class="panel-title">参考图上传</p>
+        <div class="upload-zone" onclick="document.getElementById('fi').click()">
+          <input type="file" id="fi" accept="image/*" style="display:none" onchange="handleUpload(event)">
+          <div id="up-ph" style="text-align:center">
+            <p style="font-size:13px;color:var(--text2)">点击上传参考图</p>
+          </div>
+          <img id="upPreview" src="" alt="">
+        </div>
+        
+        <div>
+          <label style="font-size:11px;color:var(--text2)">Gemini 反推模型</label>
+          <select class="select-field" id="modelSelect">
+            <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (最强)</option>
+            <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size:11px;color:var(--text2)">额外风格说明</label>
+          <textarea class="input-field" id="extraHint" style="height:60px;resize:none"></textarea>
+        </div>
+
+        <button class="btn btn-primary" id="revBtn" onclick="doReverse()" disabled>✦ AI 反推提示词</button>
+      </div>
+
+      <!-- 中：提示词与预览 -->
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="panel">
+          <p class="panel-title">AI 生成的提示词</p>
+          <div class="prompt-grid">
+            <textarea class="prompt-ta" id="sysTa" placeholder="系统提示词..."></textarea>
+            <textarea class="prompt-ta" id="imgTa" placeholder="内容描述提示词..."></textarea>
+          </div>
+        </div>
+        
+        <div class="panel">
+          <p class="panel-title">即梦 生图测试</p>
+          <div class="preview-box">
+             <img id="genPreview" src="" alt="" style="display:none">
+             <p id="gen-ph" style="color:var(--text3);font-size:12px">等待生图测试...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：即梦与香蕉操作区 -->
+      <div style="display:flex;flex-direction:column;gap:15px">
+        <div class="panel">
+          <p class="panel-title" style="color:var(--teal)">🎨 即梦生图</p>
+          <select class="select-field" id="jmModelSelect" style="margin-bottom:10px">
+            <option value="jimeng_t2i_v46">即梦 4.6 Pro (最新)</option>
+            <option value="jimeng_t2i_v40">即梦 4.0 Pro</option>
+            <option value="jimeng_t2i_v31">即梦 3.1 经典</option>
+          </select>
+          <button class="btn btn-teal" id="jmBtn" onclick="doJmGenerate()" disabled>生图</button>
+        </div>
+
+        <div class="panel" style="border-color:rgba(251,191,36,0.3)">
+          <p class="panel-title" style="color:var(--amber)">🍌 香蕉生图</p>
+          <button class="btn" style="background:var(--amber-bg);color:var(--amber)" id="bnBtn" onclick="doBnGenerate()" disabled>香蕉生图</button>
+        </div>
+
+        <button class="btn btn-primary" style="background:var(--green-bg);color:var(--green);border:1px solid" onclick="saveToGallery()">💾 保存画廊</button>
+        <button class="btn btn-ghost" onclick="clearAll()">🗑 清空</button>
+      </div>
+    </div>
+
+    <div class="status-bar" style="margin-top:15px">
+      <div class="dot" id="dot"></div>
+      <span id="statusTxt">就绪 — 请上传图片开始</span>
+    </div>
+  </div>
+
+  <!-- 其他页面 -->
+  <!-- 批量提示词页面 -->
+  <div class="page" id="page-batch">
+    <div style="margin-bottom: 20px;">
+      <h2 style="font-size: 18px; margin-bottom: 4px;">⚡ 批量提示词生成</h2>
+      <p style="font-size: 12px; color: var(--text2);">输入你的 SYSTEM_CHARACTER 指令，一键批量生成大量提示词案例</p>
+    </div>
+
+    <div class="ws-grid" style="grid-template-columns: 360px 1fr;">
+      <!-- 左侧：参数面板 -->
+      <div style="display:flex; flex-direction:column; gap:15px">
+        <div class="panel">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px">
+            <p class="panel-title" style="margin:0">系统指令 (SYSTEM_CHARACTER)</p>
+            <button class="badge" onclick="importSysFromWorkspace()" style="cursor:pointer; background:var(--accent-glow); color:var(--accent2); border:none">⬇ 从工作台导入</button>
+          </div>
+          <textarea class="prompt-ta" id="batchSysTA" style="height:340px" placeholder="在此粘贴你的 SYSTEM_CHARACTER 代码块..."></textarea>
+          
+          <div class="field">
+            <label>主题 / 角色说明 (必填)</label>
+            <input class="input-field" id="batchTheme" placeholder="例如：20个治愈系卡皮巴拉场景...">
+          </div>
+
+          <div class="field" style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+            <div>
+              <label>生成数量</label>
+              <select class="select-field" id="batchCount">
+                <option value="10">10 条</option>
+                <option value="20" selected>20 条</option>
+                <option value="50">50 条</option>
+              </select>
+            </div>
+            <div>
+              <label>使用模型</label>
+              <select class="select-field" id="batchModel">
+                <option value="gemini-3.1-pro-preview">3.1 Pro (最佳)</option>
+                <option value="gemini-3-flash-preview">3 Flash (快速)</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="batchGenBtn" onclick="doBatchGenerate()" style="margin-top:15px; height:44px">⚡ 开始批量生成</button>
+          <div class="status-bar" id="batchStatus" style="margin-top:10px; border:none; padding:8px 0">
+             <div class="dot" id="batchDot"></div>
+             <span id="batchStatusTxt" style="font-size:11px">就绪</span>
+          </div>
+        </div>
+
+        <div class="panel" style="display:flex; flex-direction:column; gap:10px">
+          <p class="panel-title">批量操作</p>
+          <button class="btn btn-ghost" onclick="batchCopyAll()">📋 复制全部提示词</button>
+          <button class="btn btn-ghost" onclick="batchExportTxt()">💾 导出为 .txt 文件</button>
+          <button class="btn btn-teal" onclick="batchExportExcel()" style="color:var(--green); border-color:var(--green)">📊 导出为 Excel 表格</button>
+          <button class="btn btn-ghost" onclick="batchClearResults()">🗑 清空结果</button>
+        </div>
+      </div>
+
+      <!-- 右侧：生成结果列表 -->
+      <div class="panel" style="min-height: 800px; display:flex; flex-direction:column">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px">
+          <p class="panel-title" style="margin:0">生成结果</p>
+          <span class="badge" id="batchCountBadge">0 条</span>
+        </div>
+        
+        <div id="batchResultList" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto; padding-right:5px">
+          <div style="margin:auto; text-align:center; color:var(--text3)">
+            <p style="font-size:14px; margin-bottom:8px">暂无结果</p>
+            <p style="font-size:12px">输入指令后点击「开始批量生成」</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-gallery">
+    <div class="g-grid" id="g-grid"></div>
+  </div>
+</main>
+
+<script>
+// --- API 拦截器：自动注入用户在页面配置的密钥 ---
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  if (url.includes('/api/')) {
+    options.headers = options.headers || {};
+    options.headers['x-volc-ak'] = localStorage.getItem('volc_ak') || '';
+    options.headers['x-volc-sk'] = localStorage.getItem('volc_sk') || '';
+    options.headers['x-gemini-key'] = localStorage.getItem('gemini_key') || '';
+  }
+  return originalFetch(url, options);
+};
+
+// --- 基础 UI 交互 ---
+function switchTab(t) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+t).classList.add('active');
+  const idx = {workspace:0, batch:1, gallery:2}[t];
+  document.getElementById('tab'+idx).classList.add('active');
+  if(t==='gallery') fetchGallery();
+}
+
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function saveConfig() {
+  localStorage.setItem('volc_ak', document.getElementById('cfg-volc-ak').value);
+  localStorage.setItem('volc_sk', document.getElementById('cfg-volc-sk').value);
+  localStorage.setItem('gemini_key', document.getElementById('cfg-gemini-key').value);
+  location.reload();
+}
+
+function setStatus(msg, type='idle') {
+  document.getElementById('statusTxt').textContent = msg;
+  const d = document.getElementById('dot');
+  d.className = 'dot' + (type==='loading'?' spin':type==='ok'?' ok':type==='err'?' err':'');
+}
+
+// --- 逻辑处理 ---
+let S = { file: null, gallery: [] };
+
+function handleUpload(e) {
+  const f = e.target.files[0]; if(!f) return;
+  S.file = f;
+  const r = new FileReader();
+  r.onload = ev => {
+    const img = document.getElementById('upPreview');
+    img.src = ev.target.result; img.style.display = 'block';
+    document.getElementById('up-ph').style.display = 'none';
+    document.getElementById('revBtn').disabled = false;
+  };
+  r.readAsDataURL(f);
+}
+
+async function doReverse() {
+  const fd = new FormData();
+  fd.append('file', S.file);
+  fd.append('model', document.getElementById('modelSelect').value);
+  fd.append('extra_hint', document.getElementById('extraHint').value);
+  
+  setStatus('Gemini 正在反推...', 'loading');
+  try {
+    const r = await fetch('/api/reverse-prompt', { method: 'POST', body: fd });
+    const j = await r.json();
+    if(j.status==='success') {
+      document.getElementById('sysTa').value = j.data.system_prompt;
+      document.getElementById('imgTa').value = j.data.image_prompt;
+      document.getElementById('jmBtn').disabled = false;
+      document.getElementById('bnBtn').disabled = false;
+      setStatus('反推成功 ✓', 'ok');
+    }
+  } catch(e) { setStatus('反推失败', 'err'); }
+}
+
+async function doJmGenerate() {
+  setStatus('即梦生图中 (请在 outputs 确认)...', 'loading');
+  try {
+    const r = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        system_prompt: document.getElementById('sysTa').value,
+        image_prompt: document.getElementById('imgTa').value,
+        model: document.getElementById('jmModelSelect').value
+      })
+    });
+    const j = await r.json();
+    setStatus('即梦任务已提交', 'ok');
+  } catch(e) { setStatus('生图请求异常', 'err'); }
+}
+
+async function fetchGallery() {
+  try {
+    const r = await fetch('/api/gallery');
+    const j = await r.json();
+    if(j.status==='success') {
+      S.gallery = j.items;
+      document.getElementById('g-grid').innerHTML = S.gallery.map(it => `
+        <div class="g-card"><img src="${it.image_url}"></div>
+      `).join('');
+    }
+  } catch(e) {}
+}
+
+function clearAll() {
+  location.reload();
+}
+
+// --- 批量生成逻辑 ---
+let BS = { prompts: [], isGenerating: false };
+
+function importSysFromWorkspace() {
+  const wsSys = document.getElementById('sysTa').value.trim();
+  if(!wsSys) return alert('生图工作台的系统指令为空');
+  document.getElementById('batchSysTA').value = wsSys;
+}
+
+function setBatchStatus(msg, type='idle') {
+  document.getElementById('batchStatusTxt').textContent = msg;
+  const d = document.getElementById('batchDot');
+  d.className = 'dot' + (type==='loading'?' spin':type==='ok'?' ok':type==='err'?' err':'');
+}
+
+async function doBatchGenerate() {
+  const sys = document.getElementById('batchSysTA').value.trim();
+  const theme = document.getElementById('batchTheme').value.trim();
+  if(!sys || !theme) return alert('请填写系统指令和主题');
+
+  BS.isGenerating = true;
+  const btn = document.getElementById('batchGenBtn');
+  btn.disabled = true;
+  setBatchStatus('批量生成中...', 'loading');
+
+  try {
+    const r = await fetch('/api/batch-prompts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_prompt: sys,
+        theme: theme,
+        count: parseInt(document.getElementById('batchCount').value),
+        model: document.getElementById('batchModel').value
+      })
+    });
+    const j = await r.json();
+    if(j.status === 'success') {
+      BS.prompts = j.prompts;
+      renderBatchResults();
+      setBatchStatus('批量生成成功 ✓', 'ok');
+    } else {
+      throw new Error(j.message);
+    }
+  } catch(e) {
+    setBatchStatus('生成失败: ' + e.message, 'err');
+  } finally {
+    BS.isGenerating = false;
+    btn.disabled = false;
+  }
+}
+
+function renderBatchResults() {
+  const list = document.getElementById('batchResultList');
+  document.getElementById('batchCountBadge').textContent = BS.prompts.length + ' 条';
+  
+  list.innerHTML = BS.prompts.map((p, i) => `
+    <div style="background:var(--bg3); border:1px solid var(--border); padding:15px; border-radius:8px; position:relative">
+      <div style="font-size:10px; color:var(--accent2); margin-bottom:5px">NO.${String(i+1).padStart(2, '0')}</div>
+      <div style="font-size:12px; line-height:1.6">${p}</div>
+      <div style="margin-top:10px; display:flex; gap:8px">
+        <button class="btn btn-ghost" style="padding:4px 10px; font-size:11px; width:auto; border-radius:4px" onclick="copyBatchPrompt(${i})">复制</button>
+        <button class="btn btn-teal" style="padding:4px 10px; font-size:11px; width:auto; border-radius:4px" onclick="loadBatchToWS(${i})">载入工作台</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function copyBatchPrompt(i) {
+  navigator.clipboard.writeText(BS.prompts[i]).then(() => alert('已复制'));
+}
+
+function loadBatchToWS(i) {
+  document.getElementById('imgTa').value = BS.prompts[i];
+  switchTab('workspace');
+}
+
+function batchCopyAll() {
+  if(!BS.prompts.length) return;
+  navigator.clipboard.writeText(BS.prompts.join('\n\n'));
+}
+
+function batchExportTxt() {
+  if(!BS.prompts.length) return;
+  const blob = new Blob([BS.prompts.join('\n\n')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Batch_Prompts_${Date.now()}.txt`;
+  a.click();
+}
+
+function batchExportExcel() {
+  if(!BS.prompts.length) return;
+  const csvContent = "\uFEFF" + "提示词\n" + BS.prompts.map(p => `"${p.replace(/"/g, '""')}"`).join("\n");
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Batch_Prompts_${Date.now()}.csv`;
+  a.click();
+}
+
+function batchClearResults() {
+  BS.prompts = [];
+  renderBatchResults();
+}
+
+async function doBnGenerate() {
+  const imgTa = document.getElementById('imgTa').value.trim();
+  if(!imgTa) return alert('请输入图片提示词');
+  
+  const btn = document.getElementById('bnBtn');
+  btn.disabled = true;
+  setStatus('香蕉生图请求中...', 'loading');
+
+  try {
+    const r = await fetch('/api/banana-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: imgTa,
+        model: 'gemini-1.5-flash'
+      })
+    });
+    const j = await r.json();
+    if(j.status === 'success') {
+      setStatus('香蕉生图指令已发送', 'ok');
+      console.log('Gemini Response:', j.raw_response);
+    } else {
+      throw new Error(j.message);
+    }
+  } catch(e) {
+    setStatus('香蕉生图失败: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function saveToGallery() {
+  setStatus('正在同步画廊...', 'loading');
+  await fetchGallery();
+  setStatus('画廊已更新', 'ok');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if(localStorage.getItem('volc_ak')) {
+    document.getElementById('backend-badge').textContent = '后端已配置✓';
+    document.getElementById('backend-badge').classList.add('badge-ok');
+    document.getElementById('cfg-volc-ak').value = localStorage.getItem('volc_ak');
+    document.getElementById('cfg-volc-sk').value = localStorage.getItem('cfg-volc-sk-hidden') || '';
+    document.getElementById('cfg-gemini-key').value = localStorage.getItem('cfg-gemini-key-hidden') || '';
+  }
+  
+  // 定时刷新画廊
+  setInterval(fetchGallery, 5000);
+});
+
+function saveConfig() {
+  const ak = document.getElementById('cfg-volc-ak').value;
+  const sk = document.getElementById('cfg-volc-sk').value;
+  const gk = document.getElementById('cfg-gemini-key').value;
+  
+  localStorage.setItem('volc_ak', ak);
+  localStorage.setItem('volc_sk', sk);
+  localStorage.setItem('gemini_key', gk);
+  
+  // 仅为了 UI 回显，可以存一份脱敏的
+  localStorage.setItem('cfg-volc-sk-hidden', sk);
+  localStorage.setItem('cfg-gemini-key-hidden', gk);
+  
+  location.reload();
+}
+
+
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Gallery Rules
+    match /gallery/{itemId} {
+      // Anyone can read the shared gallery
+      allow read: if true;
+
+      // Only signed in users can contribute to the gallery
+      // (For this specific app, we might allow anonymous writes if not using Auth yet, 
+      // but best practice is isSignedIn(). Let's allow public read, and public write for now 
+      // if the user hasn't explicitly asked for accounts, but mark it clearly.)
+      allow create: if isValidGalleryItem(request.resource.data);
+      
+      // Prevent deleting or editing others' works (or anyone's for now to keep it high integrity)
+      allow update, delete: if false;
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll(['imageUrl', 'model', 'subject', 'createdAt'])
+        && data.imageUrl is string && data.imageUrl.size() < 2048
+        && data.model is string && data.model.size() < 128
+        && data.subject is string && data.subject.size() < 5000
+        && data.createdAt is timestamp;
+    }
+  }
+}

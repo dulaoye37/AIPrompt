@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "GalleryItem": {
+      "title": "Gallery Item",
+      "description": "Metadata for a generated image saved in the shared gallery.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier" },
+        "imageUrl": { "type": "string", "description": "URL to the generated image" },
+        "model": { "type": "string", "description": "Model used for generation" },
+        "subject": { "type": "string", "description": "Subject prompt" },
+        "systemPrompt": { "type": "string", "description": "The system prompt/style used" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation" },
+        "userId": { "type": "string", "description": "UID of the user who generated it (if any)" }
+      },
+      "required": ["imageUrl", "model", "subject", "createdAt"]
+    }
+  },
+  "firestore": {
+    "gallery": {
+      "schema": "GalleryItem",
+      "description": "A collection of shared generated images."
+    }
+  }
+}
