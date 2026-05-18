@@ -149,8 +149,9 @@
         <div>
           <label style="font-size:11px;color:var(--text2)">Gemini 反推模型</label>
           <select class="select-field" id="modelSelect">
-            <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (最强)</option>
-            <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (最强)</option>
+            <option value="gemini-3-flash-preview">Gemini 3 Flash (快速)</option>
+            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
           </select>
         </div>
 
@@ -186,16 +187,36 @@
         <div class="panel">
           <p class="panel-title" style="color:var(--teal)">🎨 即梦生图</p>
           <select class="select-field" id="jmModelSelect" style="margin-bottom:10px">
-            <option value="jimeng_t2i_v46">即梦 4.6 Pro (最新)</option>
-            <option value="jimeng_t2i_v40">即梦 4.0 Pro</option>
+            <option value="jimeng_t2i_v40">即梦 4.0 Pro (推荐)</option>
+            <option value="jimeng_t2i_v46">即梦 4.6 Pro (实验)</option>
             <option value="jimeng_t2i_v31">即梦 3.1 经典</option>
+            <option value="jimeng_t2i_v30">即梦 3.0 文字</option>
           </select>
           <button class="btn btn-teal" id="jmBtn" onclick="doJmGenerate()" disabled>生图</button>
         </div>
 
         <div class="panel" style="border-color:rgba(251,191,36,0.3)">
-          <p class="panel-title" style="color:var(--amber)">🍌 香蕉生图</p>
-          <button class="btn" style="background:var(--amber-bg);color:var(--amber)" id="bnBtn" onclick="doBnGenerate()" disabled>香蕉生图</button>
+          <p class="panel-title" style="color:var(--amber)">🍌 香蕉生图 (Gemini)</p>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <select class="select-field" id="bnModelSelect">
+              <option value="gemini-3.1-flash-image-preview">3.1 Flash 快速</option>
+              <option value="gemini-3-pro-image-preview">3 Pro 高质量</option>
+            </select>
+            <div style="display:flex; gap:5px">
+              <select class="select-field" id="bnRatioSelect" style="flex:1">
+                <option value="9:16">9:16</option>
+                <option value="1:1">1:1</option>
+                <option value="3:4">3:4</option>
+                <option value="16:9">16:9</option>
+              </select>
+              <select class="select-field" id="bnSizeSelect" style="flex:1">
+                <option value="1K">1K</option>
+                <option value="2K" selected>2K</option>
+                <option value="4K">4K</option>
+              </select>
+            </div>
+            <button class="btn" style="background:var(--amber-bg);color:var(--amber);margin-top:0" id="bnBtn" onclick="doBnGenerate()" disabled>香蕉生图</button>
+          </div>
         </div>
 
         <button class="btn btn-primary" style="background:var(--green-bg);color:var(--green);border:1px solid" onclick="saveToGallery()">💾 保存画廊</button>
@@ -509,6 +530,7 @@ async function doBnGenerate() {
   
   const btn = document.getElementById('bnBtn');
   btn.disabled = true;
+  btn.textContent = '⏳ 生图中...';
   setStatus('香蕉生图请求中...', 'loading');
 
   try {
@@ -517,13 +539,20 @@ async function doBnGenerate() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt: imgTa,
-        model: 'gemini-1.5-flash'
+        aspect_ratio: document.getElementById('bnRatioSelect').value,
+        image_size: document.getElementById('bnSizeSelect').value,
+        banana_model: document.getElementById('bnModelSelect').value
       })
     });
     const j = await r.json();
     if(j.status === 'success') {
-      setStatus('香蕉生图指令已发送', 'ok');
-      console.log('Gemini Response:', j.raw_response);
+      setStatus('香蕉生图成功 ✓', 'ok');
+      if(j.image_url || j.image_b64) {
+        const url = j.image_url || 'data:image/png;base64,' + j.image_b64;
+        document.getElementById('genPreview').src = url;
+        document.getElementById('genPreview').style.display = 'block';
+        document.getElementById('gen-ph').style.display = 'none';
+      }
     } else {
       throw new Error(j.message);
     }
@@ -531,6 +560,7 @@ async function doBnGenerate() {
     setStatus('香蕉生图失败: ' + e.message, 'err');
   } finally {
     btn.disabled = false;
+    btn.textContent = '香蕉生图';
   }
 }
 
